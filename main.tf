@@ -11,7 +11,7 @@ data "aws_vpc" "default" {
 }
 
 data "aws_ssm_parameter" "parameter_for_ami" {
-  name = "/ngap/amis/image_id_al2023_x86" 
+  name = var.ssm_parameter 
 }
 
 data "aws_subnets" "private" {
@@ -171,7 +171,13 @@ resource "aws_iam_policy" "lambda_ssm_ec2_policy" {
     {
       "Effect": "Allow",
       "Action": [
-        "ssm:GetParameter",
+        "ssm:GetParameter"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "autoscaling:StartInstanceRefresh"
       ],
       "Resource": "*"
@@ -200,17 +206,15 @@ resource "aws_iam_policy" "lambda_ssm_ec2_policy" {
 }
 EOF
 }
-
+      # "Resource": "${data.aws_ssm_parameter.parameter_for_ami.arn}"
 # Attach policy to Lambda Role
 resource "aws_iam_role_policy_attachment" "lambda_ssm_ec2_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_ssm_ec2_policy.arn
 }
 
-
-
 # Create an Auto Scaling Group that uses the launch template
-resource "aws_autoscaling_group" "example_asg" {
+resource "aws_autoscaling_group" "main_asg" {
   name                      = "${local.auto-scaling-group-name}"
   max_size                  = var.asg_max_size
   min_size                  = var.asg_min_size
@@ -221,7 +225,6 @@ resource "aws_autoscaling_group" "example_asg" {
     version = "$Latest"
   }
 
-  # Provide your VPC subnets where the ASG will launch instances.
   vpc_zone_identifier = data.aws_subnets.private.ids
 }
 
@@ -293,7 +296,7 @@ resource "aws_iam_policy" "s3fs_access_policy" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Action   = ["s3:*"]
         Resource = [
           aws_s3_bucket.s3fs_bucket.arn,
           "${aws_s3_bucket.s3fs_bucket.arn}/*"

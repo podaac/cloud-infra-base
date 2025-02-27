@@ -1,4 +1,4 @@
-# AMI Refresh in Terraform
+# cloud-infra-base
 aka Carpathia
 
 ## Package Lambda
