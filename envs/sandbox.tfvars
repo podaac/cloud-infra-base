@@ -1,2 +1,2 @@
-env = "sit"
+env = "sandbox"
 ssm_parameter = "/"

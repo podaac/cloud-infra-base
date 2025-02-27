@@ -40,3 +40,7 @@ variable "s3fs_directories" {
     "home/ssm-user/"
   ]
 }
+
+variable "ssm_parameter" {
+    type    = string
+}
