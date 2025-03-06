@@ -1,35 +1,38 @@
-# ${var.app_name}
 variable "app_name" {
     default = "carpathia"
     type    = string
 }
 
-# ${var.env}
-variable "env" {
+variable "stage" {
     type = string
 }
 
-# ${var.instance_size}
+variable "region" {
+  type = string
+}
+
+variable "resource_prefix" {
+    type = string
+    default = null
+}
+
+variable "default_tags" {
+    type = map(string)
+    default = {}
+}
+
 variable "instance_size" {
     default = "t3.small"
     type    = string
 }
 
-# ${var.asg_max_size}
 variable "asg_max_size" {
     default = 1
     type    = number
 }
 
-# ${var.asg_min_size}
 variable "asg_min_size" {
-    default = 0
-    type    = number
-}
-
-# ${var.asg_desired_capacity}
-variable "asg_desired_capacity" {
-    default = 0
+    default = 1
     type    = number
 }
 
@@ -41,6 +44,7 @@ variable "s3fs_directories" {
   ]
 }
 
-variable "ssm_parameter" {
+variable "ami_ssm_key" {
     type    = string
+    default = "/ngap/amis/image_id_al2023_x86"
 }
