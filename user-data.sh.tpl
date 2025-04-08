@@ -49,4 +49,26 @@ for site in $(find /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/
     ansible-playbook "$site" -v -i localhost, --connection=local
 done
 
+echo "====== Inject bash hook ======"
+# Override original /bin/bash with custom init script
+mv /bin/bash /bin/bash.real
+cat << EOF > /bin/bash
+#!/bin/bash.real
+if [ "\$(whoami)" == "ssm-user" ]; then
+  # Source the .bashrc only when logging in as ssm-user
+  export BASH_ENV=~/.bashrc
+fi
+/bin/bash.real "\$@"
+EOF
+chmod +x /bin/bash
+
+# Write .bashrc for ssm-user if doesn't exist
+if [ -f "/home/ssm-user/.bashrc" ]; then
+  cat << EOF > /home/ssm-user/.bashrc
+export AWS_REGION=${aws_region}
+export AWS_DEFAULT_REGION=${aws_region}
+cd ~
+EOF
+fi
+
 echo "====== DONE with User Data ======"

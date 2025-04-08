@@ -98,6 +98,7 @@ resource "aws_launch_template" "ssm_ami_launch_template" {
   user_data = base64encode(templatefile("${path.module}/../user-data.sh.tpl", {
     s3fs_bucket_name = aws_s3_bucket.s3fs_bucket.id
     s3fs_directories = join(" ", var.s3fs_directories)
+    aws_region = var.region
   }))
 
   tag_specifications {
