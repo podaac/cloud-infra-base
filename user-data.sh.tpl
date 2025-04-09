@@ -63,7 +63,7 @@ EOF
 chmod +x /bin/bash
 
 # Write .bashrc for ssm-user if doesn't exist
-if [ -f "/home/ssm-user/.bashrc" ]; then
+if ! [ -f "/home/ssm-user/.bashrc" ]; then
   cat << EOF > /home/ssm-user/.bashrc
 export AWS_REGION=${aws_region}
 export AWS_DEFAULT_REGION=${aws_region}
