@@ -17,70 +17,63 @@ resource "aws_lambda_function" "ami_rotation" {
   }
 }
 
+data "aws_iam_policy_document" "lambda_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${local.resource_prefix}_lambda_role"
 
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
+  assume_role_policy = data.aws_iam_policy_document.lambda_role.minified_json
 }
-EOF
+
+data "aws_iam_policy_document" "lambda_ssm_ec2" {
+  statement {
+    actions = ["ssm:GetParameter"]
+    resources = [data.aws_ssm_parameter.ngap_ami.arn]
+  }
+
+  statement {
+    actions = ["autoscaling:StartInstanceRefresh"]
+    resources = [aws_autoscaling_group.main_asg.arn]
+  }
+
+  statement {
+    actions = [
+      "ec2:ModifyLaunchTemplate",
+      "ec2:CreateLaunchTemplate",
+      "ec2:CreateLaunchTemplateVersion",
+      "ec2:DescribeLaunchTemplates",
+      "ec2:DescribeLaunchTemplateVersions"
+    ]
+    resources = [aws_launch_template.ssm_ami_launch_template.arn]
+  }
+
+  statement {
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${aws_lambda_function.ami_rotation.function_name}",
+      "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${aws_lambda_function.ami_rotation.function_name}:*"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "lambda_ssm_ec2" {
   name        = "${local.resource_prefix}_lambda_ssm_ec2_policy"
   description = "Allows Lambda to read SSM and update EC2 launch templates"
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "autoscaling:StartInstanceRefresh"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:ModifyLaunchTemplate",
-        "ec2:DescribeLaunchTemplates",
-        "ec2:DescribeLaunchTemplateVersions",
-        "ec2:CreateLaunchTemplate",
-        "ec2:CreateLaunchTemplateVersion"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-EOF
+  policy = data.aws_iam_policy_document.lambda_ssm_ec2.minified_json
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_logs" {

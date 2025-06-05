@@ -18,23 +18,23 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.cron_rule.arn
 }
 
+data "aws_iam_policy_document" "eventbridge_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_iam_role" "eventbridge" {
   name = "${local.resource_prefix}_eventbridge_ssm_role"
-
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "events.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
+  assume_role_policy = data.aws_iam_policy_document.eventbridge_role.minified_json
 }
-EOF
+
+data "aws_iam_policy_document" "eventbridge" {
+  
 }
 
 resource "aws_iam_policy" "eventbridge" {
