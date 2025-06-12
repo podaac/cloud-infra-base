@@ -1,4 +1,6 @@
 resource "aws_cloudwatch_event_rule" "cron_rule" {
+  count = var.disable_ami_rotation ? 0 : 1
+
   name                = "${local.resource_prefix}_cron_rule"
   description         = "Triggers on Friday at midnight UTC"
   schedule_expression = "cron(0 0 ? * 6 *)"

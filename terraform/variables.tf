@@ -48,3 +48,8 @@ variable "ami_ssm_key" {
     type    = string
     default = "/ngap/amis/image_id_al2023_x86"
 }
+
+variable "disable_ami_rotation" {
+    type    = bool
+    default = false
+}
