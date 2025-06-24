@@ -84,6 +84,15 @@ resource "aws_launch_template" "ssm_ami_launch_template" {
   name                   = local.launch_template_name
   vpc_security_group_ids = [aws_security_group.allow_all_egress.id]
 
+  block_device_mappings {
+    device_name = "/dev/xvda" // This is typically the root device for Amazon Linux/Ubuntu
+    ebs {
+      volume_size = var.ebs_size_gb
+      volume_type = "gp3"
+      delete_on_termination = true
+    }
+  }
+
   lifecycle {
     create_before_destroy = true
     ignore_changes = [

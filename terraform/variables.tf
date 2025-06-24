@@ -26,6 +26,11 @@ variable "instance_size" {
     type    = string
 }
 
+variable "ebs_size_gb" {
+    default = 100
+    type    = number
+}
+
 variable "asg_max_size" {
     default = 1
     type    = number
