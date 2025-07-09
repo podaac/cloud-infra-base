@@ -14,9 +14,6 @@ git checkout v1.95
 make
 make install
 
-echo "====== Backup ssm-user Home Dir ======"
-mv /home/ssm-user /home/ssm-user-backup
-
 echo "====== Create S3FS Mounts and Populate FSTAB ======"
 for dir in ${s3fs_directories}; do
     echo "making /$dir"
@@ -54,11 +51,17 @@ echo "====== Inject bash hook ======"
 mv /bin/bash /bin/bash.real
 cat << EOF > /bin/bash
 #!/bin/bash.real
-if [ "\$(whoami)" == "ssm-user" ]; then
+if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
+  # Make the terminal look nice
+  export PS1='[\u@\h \W]\$ '
+
+  cd ~
+
   # Source the .bashrc only when logging in as ssm-user
-  export BASH_ENV=~/.bashrc
+  source ~/.bashrc
 fi
-/bin/bash.real "\$@"
+
+exec /bin/bash.real $@
 EOF
 chmod +x /bin/bash
 
