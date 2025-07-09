@@ -70,7 +70,6 @@ if ! [ -f "/home/ssm-user/.bashrc" ]; then
   cat << EOF > /home/ssm-user/.bashrc
 export AWS_REGION=${aws_region}
 export AWS_DEFAULT_REGION=${aws_region}
-cd ~
 EOF
 fi
 
