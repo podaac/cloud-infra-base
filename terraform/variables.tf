@@ -53,3 +53,9 @@ variable "ami_ssm_key" {
     type    = string
     default = "/ngap/amis/image_id_al2023_x86"
 }
+
+variable "rotation_period" {
+  default = 1
+  description = "Value in days to rotate the EC2 AMI. Set to 0 to disable rotation."
+  type    = number
+}
