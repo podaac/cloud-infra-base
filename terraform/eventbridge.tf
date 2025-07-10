@@ -2,8 +2,8 @@ resource "aws_cloudwatch_event_rule" "cron_rule" {
   count = var.rotation_period > 0 ? 1 : 0
 
   name                = "${local.resource_prefix}_cron_rule"
-  description         = "Triggers on Friday at midnight UTC"
-  schedule_expression = "cron(0 0 ? * 6 *)"
+  description         = "Triggers every 12 hours"
+  schedule_expression = "cron(0 */12 ? * * *)"
 }
 
 resource "aws_cloudwatch_event_target" "eventbridge_to_lambda" {
