@@ -1,6 +1,6 @@
 resource "aws_lambda_function" "ami_rotation" {
   function_name    = "${local.resource_prefix}_ami_rotation"
-  role            = aws_iam_role.lambda_role.arn
+  role            = aws_iam_role.lambda_execution.arn
   handler         = "${var.app_name}_lambda_function.lambda_handler"
   runtime         = "python3.13"
   timeout         = 60
@@ -14,6 +14,7 @@ resource "aws_lambda_function" "ami_rotation" {
       LAUNCH_TEMPLATE_NAME  = aws_launch_template.ssm_ami_launch_template.name
       AUTO_SCALING_GROUP_NAME = aws_autoscaling_group.main_asg.name
       SNS_TOPIC_ARN = aws_sns_topic.ami_rotation.arn
+      ROTATION_PERIOD = var.rotation_period
     }
   }
 }
@@ -29,13 +30,13 @@ data "aws_iam_policy_document" "lambda_role" {
   }
 }
 
-resource "aws_iam_role" "lambda_role" {
-  name = "${local.resource_prefix}_lambda_role"
+resource "aws_iam_role" "lambda_execution" {
+  name = "${local.resource_prefix}_lambda_execution_role"
 
   assume_role_policy = data.aws_iam_policy_document.lambda_role.minified_json
 }
 
-data "aws_iam_policy_document" "lambda_ssm_ec2" {
+data "aws_iam_policy_document" "lambda_policies" {
   statement {
     actions = ["ssm:GetParameter"]
     resources = [data.aws_ssm_parameter.ngap_ami.arn]
@@ -50,11 +51,17 @@ data "aws_iam_policy_document" "lambda_ssm_ec2" {
     actions = [
       "ec2:ModifyLaunchTemplate",
       "ec2:CreateLaunchTemplate",
-      "ec2:CreateLaunchTemplateVersion",
+      "ec2:CreateLaunchTemplateVersion"
+    ]
+    resources = [aws_launch_template.ssm_ami_launch_template.arn]
+  }
+
+  statement {
+    actions = [
       "ec2:DescribeLaunchTemplates",
       "ec2:DescribeLaunchTemplateVersions"
     ]
-    resources = [aws_launch_template.ssm_ami_launch_template.arn]
+    resources = ["*"]
   }
 
   statement {
@@ -80,24 +87,19 @@ data "aws_iam_policy_document" "lambda_ssm_ec2" {
   }
 }
 
-resource "aws_iam_policy" "lambda_ssm_ec2" {
-  name        = "${local.resource_prefix}_lambda_ssm_ec2_policy"
+resource "aws_iam_policy" "lambda_execution" {
+  name        = "${local.resource_prefix}_lambda_execution_policy"
   description = "Allows Lambda to read SSM and update EC2 launch templates"
 
-  policy = data.aws_iam_policy_document.lambda_ssm_ec2.minified_json
+  policy = data.aws_iam_policy_document.lambda_policies.minified_json
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_logs" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+resource "aws_iam_role_policy_attachment" "lambda_execution" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = aws_iam_policy.lambda_execution.arn
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_ssm_ec2" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.lambda_ssm_ec2.arn
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_ssm" {
-  role       = aws_iam_role.lambda_role.name
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }

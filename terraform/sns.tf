@@ -12,7 +12,7 @@ data "aws_iam_policy_document" "sns_ami_rotation_policy" {
     actions = ["SNS:Publish"]
     principals {
       type        = "AWS"
-      identifiers = [aws_iam_role.lambda_role.arn]
+      identifiers = [aws_iam_role.lambda_execution.arn]
     }
     resources = [aws_sns_topic.ami_rotation.arn]
   }

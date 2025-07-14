@@ -3,23 +3,25 @@ resource "aws_cloudwatch_event_rule" "cron_rule" {
 
   name                = "${local.resource_prefix}_cron_rule"
   description         = "Triggers every 12 hours"
-  schedule_expression = "cron(0 0 ? * 6,0 *)"
+  schedule_expression = "cron(0 0 ? * SUN-SAT *)"
 }
 
 resource "aws_cloudwatch_event_target" "eventbridge_to_lambda" {
-  count = var.rotation_period > 0 ? 1 : 0
+  for_each = toset(aws_cloudwatch_event_rule.cron_rule[*].name)
 
-  rule      = aws_cloudwatch_event_rule.cron_rule.name
+  rule      = each.value
   target_id = "SendToLambda"
   arn       = aws_lambda_function.ami_rotation.arn
 }
 
 resource "aws_lambda_permission" "allow_eventbridge" {
+  for_each = toset(aws_cloudwatch_event_rule.cron_rule[*].arn)
+
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.ami_rotation.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.cron_rule.arn
+  source_arn    = each.value
 }
 
 resource "aws_iam_role" "eventbridge" {
