@@ -16,13 +16,6 @@ ROTATION_PERIOD = timedelta(days=int(environ.get("ROTATION_PERIOD", 1)))
 
 
 def lambda_handler(event, context):
-    if ROTATION_PERIOD.days == 0:
-        print(
-            'Rotation period is set to 0 days. This function should not have '
-            'been invoked. Please check your EventBridge rule configuration.'
-        )
-        return
-
     response = ssm_client.get_parameter(
         Name=SSM_AMI_PARAMETER, WithDecryption=True)
     new_ami_id = response["Parameter"]["Value"]
