@@ -1,5 +1,9 @@
-# cloud-infra-base
-aka Carpathia
+# Carpathia
+
+Carpathia is a service for creating and initializing EC2 instances within NGAP
+(NASA General Applications Platform) AWS environments. Carpathia's also performs
+automatic rotations of EC2 instances to keep up with NGAP AMI security updates
+automagically.
 
 ## Package Lambda
 ```bash
