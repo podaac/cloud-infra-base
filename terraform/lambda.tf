@@ -13,6 +13,7 @@ resource "aws_lambda_function" "ami_rotation" {
       SSM_PARAMETER_FOR_AMI = data.aws_ssm_parameter.ngap_ami.name
       LAUNCH_TEMPLATE_NAME  = aws_launch_template.ssm_ami_launch_template.name
       AUTO_SCALING_GROUP_NAME = aws_autoscaling_group.main_asg.name
+      SNS_TOPIC_ARN = aws_sns_topic.ami_rotation.arn
     }
   }
 }
@@ -66,6 +67,16 @@ data "aws_iam_policy_document" "lambda_ssm_ec2" {
       "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${aws_lambda_function.ami_rotation.function_name}",
       "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${aws_lambda_function.ami_rotation.function_name}:*"
     ]
+  }
+
+  statement {
+    actions = ["sns:Publish"]
+    resources = [aws_sns_topic.ami_rotation.arn]
+  }
+
+  statement {
+    actions = ["lambda:ListTags"]
+    resources = [aws_lambda_function.ami_rotation.arn]
   }
 }
 

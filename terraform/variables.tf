@@ -59,3 +59,9 @@ variable "rotation_period" {
   description = "Value in days to rotate the EC2 AMI. Set to 0 to disable rotation."
   type    = number
 }
+
+variable "notification_emails" {
+  type    = list(string)
+  default = []
+  description = "Email addresses to notify when AMI rotation occurs."
+}

@@ -6,6 +6,8 @@ from os import environ
 ssm_client = boto3.client("ssm")
 ec2_client = boto3.client("ec2")
 autoscaling_client = boto3.client("autoscaling")
+sns_client = boto3.client("sns")
+lambda_client = boto3.client("lambda")
 
 SSM_AMI_PARAMETER = environ.get("SSM_PARAMETER_FOR_AMI", False)
 LAUNCH_TEMPLATE_NAME = environ.get("LAUNCH_TEMPLATE_NAME", False)
@@ -50,6 +52,18 @@ def lambda_handler(event, context):
             f"Launch template '{LAUNCH_TEMPLATE_NAME}' already uses AMI {new_ami_id}. No update needed.")
     else:
         update_launch_template(new_ami_id)
+        
+        tags = lambda_client.list_tags(
+            Resource=context.invoked_function_arn
+        )['Tags']
+        sns_client.publish(
+            TopicArn=environ.get("SNS_TOPIC_ARN"),
+            Subject=f"[{tags['Environment']}] AMI Rotation Notification",
+            Message=(
+                f"Updated launch template '{LAUNCH_TEMPLATE_NAME}' with new AMI: {new_ami_id}"
+            )
+        )
+
         print(f"Starting ASG Instance Refresh")
         autoscaling_client.start_instance_refresh(
             AutoScalingGroupName=AUTO_SCALING_GROUP_NAME
