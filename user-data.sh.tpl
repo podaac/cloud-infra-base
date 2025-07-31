@@ -51,7 +51,7 @@ echo "====== Inject bash hook ======"
 mv /bin/bash /bin/bash.real
 cat << EOF > /bin/bash
 #!/bin/bash.real
-if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
+if [ "\$(whoami)" == "ssm-user" ] && [ "\$SHLVL" == "1" ]; then
   # Make the terminal look nice
   export PS1='[\u@\h \W]\$ '
 
@@ -61,7 +61,7 @@ if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
   source ~/.bashrc
 fi
 
-exec /bin/bash.real $@
+exec /bin/bash.real "\$@"
 EOF
 chmod +x /bin/bash
 
