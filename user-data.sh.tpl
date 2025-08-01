@@ -73,4 +73,10 @@ export AWS_DEFAULT_REGION=${aws_region}
 EOF
 fi
 
+echo "====== Write AMI to bootstrap ======"
+TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60"`
+AMI_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/ami-id`
+echo -n "$AMI_ID" > /bootstrap/ami_id
+
+
 echo "====== DONE with User Data ======"
