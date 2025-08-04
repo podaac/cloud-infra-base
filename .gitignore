@@ -1,0 +1,5 @@
+.terraform/
+*.zip
+*.tfstate
+.idea/
+.envrc
