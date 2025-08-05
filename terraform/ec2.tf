@@ -71,11 +71,6 @@ data "aws_iam_policy_document" "s3fs_access_policy" {
   }
 }
 
-resource "aws_iam_role_policy_attachment" "ec2_attach_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.s3fs_access_policy.arn
-}
-
 resource "aws_launch_template" "ssm_ami_launch_template" {
   image_id               = data.aws_ssm_parameter.ngap_ami.value
   instance_type          = "${var.instance_size}"
