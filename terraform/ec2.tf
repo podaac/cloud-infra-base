@@ -137,7 +137,7 @@ data "aws_iam_policy_document" "s3fs_bucket_policy" {
   }
 
   statement {
-    actions = ["s3:GetObject"]
+    actions = ["s3:GetObject", "s3:GetObjectTagging"]
     resources = ["${aws_s3_bucket.s3fs_bucket.arn}/*"]
     principals {
       type        = "AWS"
