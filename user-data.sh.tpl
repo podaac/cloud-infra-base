@@ -68,8 +68,10 @@ mkdir -p /persistent
 echo "====== Update FSTAB with Persistent ======"
 echo "s3fs#${s3fs_bucket_name} /persistent fuse _netdev,iam_role=auto,allow_other,use_cache=/tmp,uid=1001,gid=1001,umask=0022 0 0" >> /etc/fstab
 
-echo "====== Move current home directory ======"
+echo "====== Create new home directory ======"
 mv /home/ssm-user /home/ssm-user.tmp
+mkdir /home/ssm-user
+chown ssm-user:ssm-user /home/ssm-user
 
 echo "====== Mount It ALL ======"
 mount -a
