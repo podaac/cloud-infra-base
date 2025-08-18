@@ -23,4 +23,8 @@ resource "aws_sns_topic_subscription" "notification_emails" {
   topic_arn  = aws_sns_topic.ami_rotation.arn
   protocol   = "email"
   endpoint   = each.value
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
