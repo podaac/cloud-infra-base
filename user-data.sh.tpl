@@ -71,7 +71,6 @@ mkdir -p /persistent
 echo "====== Create new home directory ======"
 mv /home/ssm-user /home/ssm-user.tmp
 mkdir /home/ssm-user
-chown ssm-user:ssm-user /home/ssm-user
 
 echo "====== Mount It ALL ======"
 mount -a
