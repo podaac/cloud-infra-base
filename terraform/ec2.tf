@@ -55,27 +55,23 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_policy" "s3fs_access_policy" {
-  name        = "${local.resource_prefix}-S3FSAccessPolicy"
+data "aws_iam_policy_document" "carpathia_base_ec2" {
+  statement {
+    sid = "S3FSAccess"
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:*"]
-        Resource = [
-          aws_s3_bucket.s3fs_bucket.arn,
-          "${aws_s3_bucket.s3fs_bucket.arn}/*"
-        ]
-      }
+    effect    = "Allow"
+    actions   = ["s3:*"]
+    resources = [
+      aws_s3_bucket.s3fs_bucket.arn,
+      "${aws_s3_bucket.s3fs_bucket.arn}/*"
     ]
-  })
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "ec2_attach_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.s3fs_access_policy.arn
+resource "aws_iam_role_policy" "carpathia_base_ec2" {
+  name = "${local.resource_prefix}-CarpathiaBaseEC2Policy"
+  role   = aws_iam_role.ec2_role.name
+  policy = data.aws_iam_policy_document.carpathia_base_ec2.json
 }
 
 resource "aws_launch_template" "ssm_ami_launch_template" {
