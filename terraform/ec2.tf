@@ -55,7 +55,7 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-data "aws_iam_policy_document" "carpathia_base_ec2" {
+data "aws_iam_policy_document" "base_ec2" {
   statement {
     sid = "S3FSAccess"
 
@@ -68,10 +68,19 @@ data "aws_iam_policy_document" "carpathia_base_ec2" {
   }
 }
 
-resource "aws_iam_role_policy" "carpathia_base_ec2" {
-  name = "${local.resource_prefix}-CarpathiaBaseEC2Policy"
+data "aws_iam_policy" "cloudwatch_agent_server_policy" {
+  arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_role_policy" "base_ec2" {
+  name = "${local.resource_prefix}-BaseEC2Policy"
   role   = aws_iam_role.ec2_role.name
-  policy = data.aws_iam_policy_document.carpathia_base_ec2.json
+  policy = data.aws_iam_policy_document.base_ec2.json
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent_server_policy_attachment" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = data.aws_iam_policy.cloudwatch_agent_server_policy.arn
 }
 
 resource "aws_launch_template" "ssm_ami_launch_template" {
