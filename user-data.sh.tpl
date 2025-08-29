@@ -69,8 +69,13 @@ echo "====== Create Persistent ======"
 mkdir -p /persistent
 
 echo "====== Create new home directory ======"
-mv /home/ssm-user /home/ssm-user.tmp
-mkdir /home/ssm-user
+mkdir -p /home/ssm-user # Create home directory if doesn't exist
+rm -rf /home/ssm-user/* # Delete anything inside if it already exists
+
+echo "====== Ensure ssm-user is in sudoers ======"
+if ! [ -f "/etc/sudoers.d/ssm-agent-users" ]; then
+  echo "ssm-user ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/ssm-agent-users
+fi
 
 echo "====== Mount It ALL ======"
 mount -a
