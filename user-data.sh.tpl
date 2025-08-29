@@ -78,6 +78,12 @@ mount -a
 echo "====== Delete old home directory ======"
 rm -rf /home/ssm-user.tmp
 
+echo "====== Crontab Persistence ======"
+touch /home/ssm-user/.crontab # Ensure the crontab exists
+rm -f /var/spool/cron/ssm-user
+ln -s /home/ssm-user/.crontab /var/spool/cron/ssm-user
+systemctl restart crond.service # Not sure if this is needed, but can't hurt
+
 echo "====== Install Ansible ======"
 # Need to install Ansible here because it breaks otherwise
 yum install ansible -y
