@@ -70,7 +70,7 @@ mkdir -p /persistent
 
 echo "====== Create new home directory ======"
 mkdir -p /home/ssm-user # Create home directory if doesn't exist
-rm -rf /home/ssm-user/* # Delete anything inside if it already exists
+rm -rf /home/ssm-user/{,.}* # Delete anything inside if it already exists
 
 echo "====== Ensure ssm-user is in sudoers ======"
 if ! [ -f "/etc/sudoers.d/ssm-agent-users" ]; then
