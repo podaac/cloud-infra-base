@@ -94,7 +94,7 @@ echo "====== Install Ansible ======"
 yum install ansible -y
 
 echo "====== Run Ansibles ======"
-for site in $(find /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
+for site in $(find -L /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
     echo "Found $site"
     ansible-playbook "$site" -v -i localhost, --connection=local
 done

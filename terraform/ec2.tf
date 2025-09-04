@@ -55,27 +55,20 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_policy" "s3fs_access_policy" {
-  name        = "${local.resource_prefix}-S3FSAccessPolicy"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:*"]
-        Resource = [
-          aws_s3_bucket.s3fs_bucket.arn,
-          "${aws_s3_bucket.s3fs_bucket.arn}/*"
-        ]
-      }
-    ]
-  })
+resource "aws_iam_role_policy" "s3fs_access_policy" {
+  name   = "${local.resource_prefix}-S3FSAccessPolicy"
+  role   = aws_iam_role.ec2_role.id
+  policy = data.aws_iam_policy_document.s3fs_access_policy.minified_json
 }
 
-resource "aws_iam_role_policy_attachment" "ec2_attach_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.s3fs_access_policy.arn
+data "aws_iam_policy_document" "s3fs_access_policy" {
+  statement {
+    actions = ["s3:*"]
+    resources = [
+      aws_s3_bucket.s3fs_bucket.arn,
+      "${aws_s3_bucket.s3fs_bucket.arn}/*"
+    ]
+  }
 }
 
 resource "aws_launch_template" "ssm_ami_launch_template" {
@@ -122,6 +115,37 @@ resource "aws_launch_template" "ssm_ami_launch_template" {
 # S3FS bucket + directories
 resource "aws_s3_bucket" "s3fs_bucket" {
   bucket = "${local.resource_prefix}-ec2"
+}
+
+resource "aws_s3_bucket_policy" "s3fs_bucket_policy" {
+  count = length(var.read_only_accounts) > 0 ? 1 : 0
+
+  bucket = aws_s3_bucket.s3fs_bucket.id
+  policy = data.aws_iam_policy_document.s3fs_bucket_policy.minified_json
+}
+
+data "aws_iam_policy_document" "s3fs_bucket_policy" {
+  statement {
+    actions = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.s3fs_bucket.arn]
+    principals {
+      type        = "AWS"
+      identifiers = [
+        for account in var.read_only_accounts : "arn:aws:iam::${account}:root"
+      ]
+    }
+  }
+
+  statement {
+    actions = ["s3:GetObject", "s3:GetObjectTagging"]
+    resources = ["${aws_s3_bucket.s3fs_bucket.arn}/*"]
+    principals {
+      type        = "AWS"
+      identifiers = [
+        for account in var.read_only_accounts : "arn:aws:iam::${account}:root"
+      ]
+    }
+  }
 }
 
 resource "aws_s3_object" "s3fs_directories" {
