@@ -54,6 +54,12 @@ variable "ami_ssm_key" {
     default = "/ngap/amis/image_id_al2023_x86"
 }
 
+variable "read_only_accounts" {
+    description = "List of AWS account IDs that can read the S3 buckets."
+    type        = list(string)
+    default     = []
+}
+
 variable "rotation_period" {
   default = 1
   description = "Value in days to rotate the EC2 AMI. Set to 0 to disable rotation."

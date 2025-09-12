@@ -147,6 +147,37 @@ resource "aws_s3_bucket" "s3fs_bucket" {
   bucket = "${local.resource_prefix}-ec2"
 }
 
+resource "aws_s3_bucket_policy" "s3fs_bucket_policy" {
+  count = length(var.read_only_accounts) > 0 ? 1 : 0
+
+  bucket = aws_s3_bucket.s3fs_bucket.id
+  policy = data.aws_iam_policy_document.s3fs_bucket_policy.minified_json
+}
+
+data "aws_iam_policy_document" "s3fs_bucket_policy" {
+  statement {
+    actions = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.s3fs_bucket.arn]
+    principals {
+      type        = "AWS"
+      identifiers = [
+        for account in var.read_only_accounts : "arn:aws:iam::${account}:root"
+      ]
+    }
+  }
+
+  statement {
+    actions = ["s3:GetObject", "s3:GetObjectTagging"]
+    resources = ["${aws_s3_bucket.s3fs_bucket.arn}/*"]
+    principals {
+      type        = "AWS"
+      identifiers = [
+        for account in var.read_only_accounts : "arn:aws:iam::${account}:root"
+      ]
+    }
+  }
+}
+
 resource "aws_s3_object" "s3fs_directories" {
   for_each = toset(var.s3fs_directories)
 

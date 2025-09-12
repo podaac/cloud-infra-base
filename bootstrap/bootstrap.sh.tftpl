@@ -39,7 +39,7 @@ mkdir -p /persistent
 
 echo "====== Create new home directory ======"
 mkdir -p /home/ssm-user # Create home directory if doesn't exist
-rm -rf /home/ssm-user/* # Delete anything inside if it already exists
+rm -rf /home/ssm-user/{,.}* # Delete anything inside if it already exists
 
 echo "====== Ensure ssm-user is in sudoers ======"
 if ! [ -f "/etc/sudoers.d/ssm-agent-users" ]; then
@@ -59,7 +59,7 @@ ln -s /home/ssm-user/.crontab /var/spool/cron/ssm-user
 systemctl restart crond.service # Not sure if this is needed, but can't hurt
 
 echo "====== Run Ansibles ======"
-for site in $(find /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
+for site in $(find -L /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
     echo "Found $site"
     ansible-playbook "$site" -v -i localhost, --connection=local
 done
