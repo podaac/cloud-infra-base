@@ -1,0 +1,32 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+- automake
+- fuse
+- fuse-devel
+- gcc-c++
+- git
+- libcurl-devel
+- libxml2-devel
+- make
+- openssl-devel
+- ansible
+
+bootcmd:
+- echo -n "${inject_bash_sh}" | base64 -d | bash
+
+write_files:
+- path: /opt/carpathia/bootstrap.sh
+  encoding: base64
+  permissions: '0755'
+  content: ${bootstrap_sh}
+
+- path: /opt/carpathia/modify_logging.py
+  encoding: base64
+  permissions: '0755'
+  content: ${modify_logging_py}
+
+runcmd:
+- /opt/carpathia/modify_logging.py
+- /opt/carpathia/bootstrap.sh

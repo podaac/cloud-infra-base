@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
+# -- Setup bash error handler --
+
 function error_handler {
     cat << EOF > /etc/carpathia_status
 --- CARPATHIA INITIALIZATION FAILED ---
@@ -10,39 +12,6 @@ EOF
 }
 
 trap error_handler ERR
-
-cat << EOF > /etc/carpathia_status
---- CARPATHIA IS INITIALIZING ---
-The instance will be unstable for a few minutes while the setup is in progress.
-Please wait until the setup is complete before using the instance.
-EOF
-
-echo "====== Inject bash hook ======"
-# Override original /bin/bash with custom init script
-mv /bin/bash /bin/bash.real
-cat << EOF > /bin/bash
-#!/bin/bash.real
-if [ "\$(whoami)" == "ssm-user" ] && [ "\$SHLVL" == "1" ]; then
-  # Make the terminal look nice
-  export PS1='[\u@\h \W]\$ '
-
-  cd ~
-
-  # if /etc/carpathia_status exists, display its contents
-  if [ -f /etc/carpathia_status ]; then
-    cat /etc/carpathia_status
-  fi
-
-  # Source the .bashrc only when logging in as ssm-user
-  source ~/.bashrc
-fi
-
-exec /bin/bash.real "\$@"
-EOF
-chmod +x /bin/bash
-
-echo "====== Install Fuse Prerequisite ======"
-yum install automake fuse fuse-devel gcc-c++ git libcurl-devel libxml2-devel make openssl-devel -y
 
 echo "====== Download S3FS ======"
 git clone https://github.com/s3fs-fuse/s3fs-fuse.git
@@ -88,10 +57,6 @@ touch /home/ssm-user/.crontab # Ensure the crontab exists
 rm -f /var/spool/cron/ssm-user
 ln -s /home/ssm-user/.crontab /var/spool/cron/ssm-user
 systemctl restart crond.service # Not sure if this is needed, but can't hurt
-
-echo "====== Install Ansible ======"
-# Need to install Ansible here because it breaks otherwise
-yum install ansible -y
 
 echo "====== Run Ansibles ======"
 for site in $(find -L /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
