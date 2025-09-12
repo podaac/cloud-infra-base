@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Crontab non-persistence
 - Intermittent sudo issues with password prompts
+- Fixed issue with bash wrapper not properly passing arguments to real bash exec
 - Initialization messages not appearing due to early script exits
 - Environment rotation misconfigurations
 - S3FS mounts failing due to incorrect prefixes
