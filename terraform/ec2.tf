@@ -1,5 +1,23 @@
 locals {
   launch_template_name = "${local.resource_prefix}-LaunchTemplate"
+
+   bootstrap_sh = templatefile(
+    "${path.module}/../bootstrap/bootstrap.sh.tftpl",
+    {
+      s3fs_bucket_name = aws_s3_bucket.s3fs_bucket.id
+      s3fs_directories = join(" ", var.s3fs_directories)
+      aws_region       = var.region
+    }
+   )
+
+   cloud_init = templatefile(
+    "${path.module}/../bootstrap/cloud-init.yml.tftpl",
+    {
+      inject_bash_sh = base64encode(file("${path.module}/../bootstrap/inject_bash.sh"))
+      bootstrap_sh = base64encode(local.bootstrap_sh),
+      modify_logging_py = base64encode(file("${path.module}/../bootstrap/modify_logging.py"))
+    }
+   )
 }
 
 resource "aws_autoscaling_group" "main_asg" {
@@ -26,6 +44,10 @@ resource "aws_security_group" "allow_all_egress" {
     cidr_blocks = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
   }
+}
+
+resource "aws_cloudwatch_log_group" "carpathia" {
+  name = "/service/carpathia"
 }
 
 resource "aws_iam_role" "ec2_role" {
@@ -109,11 +131,7 @@ resource "aws_launch_template" "ssm_ami_launch_template" {
     name = aws_iam_instance_profile.ec2_instance_profile.name
   }
 
-  user_data = base64encode(templatefile("${path.module}/../user-data.sh.tpl", {
-    s3fs_bucket_name = aws_s3_bucket.s3fs_bucket.id
-    s3fs_directories = join(" ", var.s3fs_directories)
-    aws_region = var.region
-  }))
+  user_data = base64encode(local.cloud_init)
 
   tag_specifications {
     resource_type = "instance"
