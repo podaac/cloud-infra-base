@@ -1,12 +1,12 @@
 resource "aws_lambda_function" "ami_rotation" {
   function_name    = "${local.resource_prefix}_ami_rotation"
   role            = aws_iam_role.lambda_execution.arn
-  handler         = "${var.app_name}_lambda_function.lambda_handler"
+  handler         = "autorotate.lambda_handler"
   runtime         = "python3.13"
   timeout         = 60
 
-  filename = "${path.module}/../${var.app_name}_lambda_function.zip"
-  source_code_hash = filebase64sha256("${path.module}/../${var.app_name}_lambda_function.zip")
+  filename = "${path.module}/../build/carpathia-lambdas-${local.version}.zip"
+  source_code_hash = filebase64sha256("${path.module}/../build/carpathia-lambdas-${local.version}.zip")
 
   environment {
     variables = {
@@ -19,7 +19,7 @@ resource "aws_lambda_function" "ami_rotation" {
   }
 }
 
-data "aws_iam_policy_document" "lambda_role" {
+data "aws_iam_policy_document" "autorotate_lambda" {
   statement {
     actions = ["sts:AssumeRole"]
 
@@ -30,13 +30,13 @@ data "aws_iam_policy_document" "lambda_role" {
   }
 }
 
-resource "aws_iam_role" "lambda_execution" {
-  name = "${local.resource_prefix}_lambda_execution_role"
+resource "aws_iam_role" "autorotate_lambda" {
+  name = "${local.resource_prefix}_autorotate_lambda_role"
 
-  assume_role_policy = data.aws_iam_policy_document.lambda_role.minified_json
+  assume_role_policy = data.aws_iam_policy_document.autorotate_lambda.minified_json
 }
 
-data "aws_iam_policy_document" "lambda_policies" {
+data "aws_iam_policy_document" "autorotate_policies" {
   statement {
     actions = ["ssm:GetParameter"]
     resources = [data.aws_ssm_parameter.ngap_ami.arn]
@@ -87,19 +87,12 @@ data "aws_iam_policy_document" "lambda_policies" {
   }
 }
 
-resource "aws_iam_policy" "lambda_execution" {
-  name        = "${local.resource_prefix}_lambda_execution_policy"
-  description = "Allows Lambda to read SSM and update EC2 launch templates"
-
+resource "aws_iam_role_policy" "autorotate_lambda" {
+  role   = aws_iam_role.autorotate_lambda_execution.name
   policy = data.aws_iam_policy_document.lambda_policies.minified_json
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_execution" {
-  role       = aws_iam_role.lambda_execution.name
-  policy_arn = aws_iam_policy.lambda_execution.arn
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-  role       = aws_iam_role.lambda_execution.name
+resource "aws_iam_role_policy_attachment" "autorotate_lambda_basic_execution" {
+  role       = aws_iam_role.autorotate_lambda_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
