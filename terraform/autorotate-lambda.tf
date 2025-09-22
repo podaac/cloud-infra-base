@@ -1,6 +1,7 @@
 resource "aws_lambda_function" "ami_rotation" {
   function_name    = "${local.resource_prefix}_ami_rotation"
-  role            = aws_iam_role.lambda_execution.arn
+  role            = aws_iam_role.autorotate_lambda.arn
+
   handler         = "autorotate.lambda_handler"
   runtime         = "python3.13"
   timeout         = 60
@@ -13,13 +14,13 @@ resource "aws_lambda_function" "ami_rotation" {
       SSM_PARAMETER_FOR_AMI = data.aws_ssm_parameter.ngap_ami.name
       LAUNCH_TEMPLATE_NAME  = aws_launch_template.ssm_ami_launch_template.name
       AUTO_SCALING_GROUP_NAME = aws_autoscaling_group.main_asg.name
-      SNS_TOPIC_ARN = aws_sns_topic.ami_rotation.arn
+      SNS_TOPIC_ARN = aws_sns_topic.email.arn
       ROTATION_PERIOD = var.rotation_period
     }
   }
 }
 
-data "aws_iam_policy_document" "autorotate_lambda" {
+data "aws_iam_policy_document" "autorotate_lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]
 
@@ -33,10 +34,10 @@ data "aws_iam_policy_document" "autorotate_lambda" {
 resource "aws_iam_role" "autorotate_lambda" {
   name = "${local.resource_prefix}_autorotate_lambda_role"
 
-  assume_role_policy = data.aws_iam_policy_document.autorotate_lambda.minified_json
+  assume_role_policy = data.aws_iam_policy_document.autorotate_lambda_assume.minified_json
 }
 
-data "aws_iam_policy_document" "autorotate_policies" {
+data "aws_iam_policy_document" "autorotate_execution" {
   statement {
     actions = ["ssm:GetParameter"]
     resources = [data.aws_ssm_parameter.ngap_ami.arn]
@@ -78,7 +79,7 @@ data "aws_iam_policy_document" "autorotate_policies" {
 
   statement {
     actions = ["sns:Publish"]
-    resources = [aws_sns_topic.ami_rotation.arn]
+    resources = [aws_sns_topic.email.arn]
   }
 
   statement {
@@ -87,12 +88,12 @@ data "aws_iam_policy_document" "autorotate_policies" {
   }
 }
 
-resource "aws_iam_role_policy" "autorotate_lambda" {
-  role   = aws_iam_role.autorotate_lambda_execution.name
-  policy = data.aws_iam_policy_document.lambda_policies.minified_json
+resource "aws_iam_role_policy" "autorotate_execution" {
+  role   = aws_iam_role.autorotate_lambda.name
+  policy = data.aws_iam_policy_document.autorotate_execution.json
 }
 
 resource "aws_iam_role_policy_attachment" "autorotate_lambda_basic_execution" {
-  role       = aws_iam_role.autorotate_lambda_execution.name
+  role       = aws_iam_role.autorotate_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }

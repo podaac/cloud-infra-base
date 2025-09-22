@@ -15,6 +15,12 @@ resource "aws_autoscaling_group" "main_asg" {
   }
 }
 
+resource "aws_autoscaling_notification" "main" {
+  group_names = [aws_autoscaling_group.main_asg.name]
+  topic_arn  = aws_sns_topic.asg_notifications.arn
+  notifications = ["autoscaling:EC2_INSTANCE_TERMINATE"]
+}
+
 resource "aws_security_group" "allow_all_egress" {
   name        = "${local.resource_prefix}-allow-all-egress-sg"
   vpc_id      = data.aws_vpc.default.id
