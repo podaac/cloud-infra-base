@@ -33,7 +33,7 @@ def process_message(message, environment):
         logging.warning("Ignoring event from unsupported service")
         return
 
-    print("Processing event: %s", json.dumps(message))
+    logging.info(f"Processing event: {json.dumps(message)}")
     if message['Event'] != 'autoscaling:EC2_INSTANCE_TERMINATE':
         logging.warning(f"Ignoring unsupported event {message['Event']}")
         return
