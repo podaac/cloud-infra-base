@@ -71,3 +71,8 @@ variable "notification_emails" {
   default = []
   description = "Email addresses to notify when AMI rotation occurs."
 }
+
+variable "permissions_boundary_policy_name" {
+  type    = string
+  default = null
+}
