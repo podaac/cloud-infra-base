@@ -50,6 +50,11 @@ resource "aws_cloudwatch_log_group" "carpathia" {
   name = "/service/carpathia"
 }
 
+data "aws_iam_policy" "ngap_sh_role_boundary" {
+  count = var.permissions_boundary_policy_name != null ? 1 : 0
+  name = var.permissions_boundary_policy_name
+}
+
 resource "aws_iam_role" "ec2_role" {
   name = "${local.resource_prefix}-ec2-role"
 
@@ -64,7 +69,7 @@ resource "aws_iam_role" "ec2_role" {
     }]
   })
 
-  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/NGAPShRoleBoundary"
+  permissions_boundary = var.permissions_boundary_policy_name != null ? data.aws_iam_policy.ngap_sh_role_boundary[0].arn : null
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_role_attachment" {
