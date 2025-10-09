@@ -15,7 +15,7 @@ AUTO_SCALING_GROUP_NAME = environ.get("AUTO_SCALING_GROUP_NAME", False)
 ROTATION_PERIOD = timedelta(days=int(environ.get("ROTATION_PERIOD", 1)))
 
 
-def lambda_handler(event, context):
+def lambda_handler(_, context):
     response = ssm_client.get_parameter(
         Name=SSM_AMI_PARAMETER, WithDecryption=True)
     new_ami_id = response["Parameter"]["Value"]
@@ -45,7 +45,7 @@ def lambda_handler(event, context):
             f"Launch template '{LAUNCH_TEMPLATE_NAME}' already uses AMI {new_ami_id}. No update needed.")
     else:
         update_launch_template(new_ami_id)
-        
+
         tags = lambda_client.list_tags(
             Resource=context.invoked_function_arn
         )['Tags']

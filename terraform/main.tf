@@ -28,10 +28,11 @@ locals {
     "podaac-${var.stage}-${var.app_name}"
   )
 
+  version = file("${path.module}/../VERSION")
   default_tags = length(var.default_tags) == 0 ? {
     team = "IA"
     application = local.resource_prefix
-    #version = local.version TODO: Introduce versioning
+    version = local.version
     Environment = var.stage
   } : var.default_tags
 }
