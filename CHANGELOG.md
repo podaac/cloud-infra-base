@@ -6,19 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
 ### Added
-
 - CloudWatch logging for kernel messages, bootstrap logs, and command lines
 
 ### Changed
-
 ### Removed
 
-## [0.1.0]
+## [1.0.0]
+- First official stable release
 
 ### Added
-
 - SIT/UAT deployment configurations
 - SNS notifications on instance rotation
 - Variable rotation periods dependent on last rotation instead of calendar date
@@ -27,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Setsail configurations/support
 
 ### Fixed
-
 - Crontab non-persistence
 - Intermittent sudo issues with password prompts
 - Fixed issue with bash wrapper not properly passing arguments to real bash exec
@@ -36,9 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - S3FS mounts failing due to incorrect prefixes
 
 ### Changed
-
 - UAT/OPS machine instance sizes changed to higher instance types for higher memory
 
 ### Removed
-
 - Older deployment configuration styles
