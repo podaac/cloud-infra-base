@@ -12,6 +12,8 @@ packages:
 - make
 - openssl-devel
 - ansible
+- libffi-devel
+- mailcap
 
 bootcmd:
 - echo -n "${inject_bash_sh}" | base64 -d | bash

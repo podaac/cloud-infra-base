@@ -1,84 +1,139 @@
 #!/bin/bash
 set -eo pipefail
 
-# -- Setup bash error handler --
+# --- Configuration Variables ---
+BUCKET_NAME="${s3fs_bucket_name}"
+AWS_REGION="${aws_region}"
+PIPX_BIN_DIR="${pipx_bin_dir}"
+PIPX_HOME_DIR="${pipx_home_dir}"
+SSM_UID="${ssm_uid}"
+SSM_GID="${ssm_gid}"
+# Python version configuration - updated to support Python ${python_version}
 
+# --- Status Reporting ---
 function error_handler {
     cat << EOF > /etc/carpathia_status
 --- CARPATHIA INITIALIZATION FAILED ---
-An error occurred during the execution of the user-data script.
-Please check the logs for more details.
+Check /var/log/cloud-init-output.log for details.
 EOF
 }
-
 trap error_handler ERR
 
-echo "====== Download S3FS ======"
-git clone https://github.com/s3fs-fuse/s3fs-fuse.git
+add_fstab_line () {
+    local line="$1"
+    grep -qF "$line" /etc/fstab || echo "$line" >> /etc/fstab
+}
 
-echo "====== Install S3FS ======"
+echo "--- CARPATHIA IS INITIALIZING ---" > /etc/carpathia_status
+
+echo "====== 1. Disk Expansion & /tmp Relocation ======"
+cat <<'EOF' > /etc/sudoers.d/ssm-user
+ssm-user ALL=(ALL) NOPASSWD:ALL
+EOF
+chmod 440 /etc/sudoers.d/ssm-user
+
+growpart /dev/nvme0n1 1 || true
+xfs_growfs -d / || true
+
+mkdir -p /data/tmp /data/s3fs-cache
+chmod 1777 /data/tmp /data/s3fs-cache
+systemctl mask tmp.mount || true
+add_fstab_line "/data/tmp /tmp none bind 0 0"
+mount -a || mount /tmp
+chmod 1777 /tmp
+
+echo "====== 2. OS Update & Python ${python_version} Installation ======"
+dnf update -y --nobest
+# Install Python ${python_version} and the headers required for building C-extensions (Pandas/Numpy)
+dnf install ${python_cmd} ${python_cmd}-pip ${python_cmd}-devel -y
+dnf groupinstall "Development Tools" -y
+dnf install -y gcc-c++ libffi-devel fuse fuse-devel libcurl-devel libxml2-devel openssl-devel mailcap git
+
+echo "====== 3. Oracle Cleanup ======"
+# Oracle is no longer used. Standardized on Python ${python_version}.
+rm -f /etc/yum.repos.d/oracle-instantclient.repo
+
+echo "====== 4. Build S3FS (v1.95) ======"
+cd /opt
+[ -d s3fs-fuse ] && rm -rf s3fs-fuse
+git clone https://github.com/s3fs-fuse/s3fs-fuse.git
 cd s3fs-fuse
 git checkout v1.95
-./autogen.sh
-./configure --prefix=/usr --with-openssl
-make
-make install
+./autogen.sh && ./configure --prefix=/usr && make -j$(nproc) && make install
+cd /
+ln -sf /usr/bin/s3fs /sbin/mount.s3fs
+grep -q '^user_allow_other' /etc/fuse.conf || echo 'user_allow_other' >> /etc/fuse.conf
 
-echo "====== Create S3FS Mounts and Populate FSTAB ======"
+echo "====== 5. S3 Mounts ======"
+id -u ssm-user || adduser -u $SSM_UID -mUG wheel ssm-user
+S3_OPTIONS="_netdev,iam_role=auto,allow_other,use_cache=/data/s3fs-cache,uid=$SSM_UID,gid=$SSM_GID,umask=0022,nonempty,compat_dir,endpoint=$AWS_REGION"
+
 for dir in ${s3fs_directories}; do
-    echo "making /$dir"
     mkdir -p /$dir
-    echo "s3fs#${s3fs_bucket_name}:/$dir /$dir fuse _netdev,iam_role=auto,allow_other,use_cache=/tmp,uid=1001,gid=1001,umask=0022 0 0" >> /etc/fstab
+    add_fstab_line "s3fs#$BUCKET_NAME:/$dir/ /$dir fuse $S3_OPTIONS 0 0"
 done
-
-echo "====== Update FSTAB with Persistent ======"
-echo "s3fs#${s3fs_bucket_name} /persistent fuse _netdev,iam_role=auto,allow_other,use_cache=/tmp,uid=1001,gid=1001,umask=0022 0 0" >> /etc/fstab
-
-echo "====== Create Persistent ======"
-mkdir -p /persistent
-
-echo "====== Create new home directory ======"
-mkdir -p /home/ssm-user # Create home directory if doesn't exist
-rm -rf /home/ssm-user/{,.}* # Delete anything inside if it already exists
-
-echo "====== Ensure ssm-user is in sudoers ======"
-if ! [ -f "/etc/sudoers.d/ssm-agent-users" ]; then
-  echo "ssm-user ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/ssm-agent-users
-fi
-
-echo "====== Mount It ALL ======"
+systemctl daemon-reload
 mount -a
 
-echo "====== Delete old home directory ======"
-rm -rf /home/ssm-user.tmp
-
-echo "====== Crontab Persistence ======"
-touch /home/ssm-user/.crontab # Ensure the crontab exists
-rm -f /var/spool/cron/ssm-user
-ln -s /home/ssm-user/.crontab /var/spool/cron/ssm-user
-systemctl restart crond.service # Not sure if this is needed, but can't hurt
-
-echo "====== Run Ansibles ======"
-for site in $(find -L /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
-    echo "Found $site"
-    ansible-playbook "$site" -v -i localhost, --connection=local
+for i in {1..15}; do
+    if mountpoint -q /bootstrap; then break; fi
+    sleep 2
 done
 
-echo "====== Write .bashrc for ssm-user if doesn't exist ======"
-# Write .bashrc for ssm-user if doesn't exist
-if ! [ -f "/home/ssm-user/.bashrc" ]; then
-  cat << EOF > /home/ssm-user/.bashrc
-export AWS_REGION=${aws_region}
-export AWS_DEFAULT_REGION=${aws_region}
-EOF
+echo "====== 6. Global Pipx & Ansible (Python ${python_version}) ======"
+export PIPX_HOME="$PIPX_HOME_DIR"
+export PIPX_BIN_DIR="$PIPX_BIN_DIR"
+mkdir -p "$PIPX_HOME_DIR"
+export PATH=$PATH:$PIPX_BIN_DIR
+
+# 6a. Pre-install build dependencies for Pandas on ${python_version}
+# We install these globally so --no-build-isolation works in Ansible
+${python_cmd} -m pip install --upgrade pip
+${python_cmd} -m pip install setuptools wheel Cython pandas
+
+# 6b. Install pipx and Ansible
+${python_cmd} -m pip install pipx
+pipx install --python ${python_cmd} ansible --force --global --include-deps
+
+echo "====== 7. Run Ansibles from S3 ======"
+ANSIBLE_BIN="$PIPX_HOME_DIR/venvs/ansible/bin/ansible-playbook"
+if mountpoint -q /bootstrap; then
+    for site in $(find /bootstrap -mindepth 3 -maxdepth 3 -type f -path "/bootstrap/*/ansible/site.yml"); do
+        echo "Running Playbook with Python ${python_version}: $site"
+        # Force ${python_version} interpreter for all modules
+        $ANSIBLE_BIN "$site" -v -i localhost, --connection=local -e "ansible_python_interpreter=/usr/bin/${python_cmd}"
+    done
 fi
 
-echo "====== Write AMI to bootstrap ======"
-TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60"`
-AMI_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/ami-id`
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+AMI_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/ami-id)
 echo -n "$AMI_ID" > /bootstrap/ami_id
 
-echo "====== Clean up ======"
-rm /etc/carpathia_status
+echo "====== 8. Finalize Shell Environment ======"
+# Protect the original bash
+[ ! -f /bin/bash.real ] && mv /bin/bash /bin/bash.real
 
-echo "====== DONE with User Data ======"
+cat << 'EOF' > /bin/bash
+#!/bin/bash.real
+if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
+  # 1. Force home directory on login
+  cd ~ 
+  
+  # 2. Update PATH: Add pipx bin and '.' for ops-tools scripts
+  export PATH="$PATH:/usr/local/bin:."
+  export PIPX_HOME="/opt/pipx"
+  export PIPX_BIN_DIR="/usr/local/bin"
+  
+  # 3. Aliases for standard versions
+  alias python=python${python_version}
+  alias pip=pip${python_version}
+  
+  # 4. Standard prompt
+  export PS1='[\u@\h \W]\$ '
+fi
+exec /bin/bash.real "$@"
+EOF
+chmod +x /bin/bash
+
+rm -f /etc/carpathia_status
+echo "====== CARPATHIA INITIALIZATION COMPLETE ======"

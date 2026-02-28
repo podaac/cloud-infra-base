@@ -7,6 +7,12 @@ locals {
       s3fs_bucket_name = aws_s3_bucket.s3fs_bucket.id
       s3fs_directories = join(" ", var.s3fs_directories)
       aws_region       = var.region
+      python_version   = var.python_version
+      python_cmd       = "python${var.python_version}"
+      ssm_uid          = "1001"
+      ssm_gid          = "1001"
+      pipx_bin_dir     = "/usr/local/bin"
+      pipx_home_dir    = "/opt/pipx"
     }
    )
 
@@ -121,6 +127,7 @@ resource "aws_launch_template" "ssm_ami_launch_template" {
   instance_type          = "${var.instance_size}"
   name                   = local.launch_template_name
   vpc_security_group_ids = [aws_security_group.allow_all_egress.id]
+  update_default_version = true
 
   block_device_mappings {
     device_name = "/dev/xvda" // This is typically the root device for Amazon Linux/Ubuntu

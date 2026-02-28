@@ -2,6 +2,14 @@ terraform {
   backend "s3" {
     key = "podaac-carpathia/terraform.tfstate"
   }
+  
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 6.0.0"
+    }
+  }
+  required_version = ">= 1.0.0"
 }
 
 provider "aws" {
@@ -28,7 +36,7 @@ locals {
     "podaac-${var.stage}-${var.app_name}"
   )
 
-  version = file("${path.module}/../VERSION")
+  version = trimspace(file("${path.module}/../VERSION"))
   default_tags = length(var.default_tags) == 0 ? {
     team = "IA"
     application = local.resource_prefix
