@@ -76,3 +76,9 @@ variable "permissions_boundary_policy_name" {
   type    = string
   default = null
 }
+
+variable "python_version" {
+  type        = string
+  default     = "3.12"
+  description = "Python version to use for EC2 instances"
+}
