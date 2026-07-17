@@ -82,7 +82,8 @@ id -u ssm-user >/dev/null 2>&1 || useradd -u "$SSM_UID" -m -U -G wheel ssm-user
 S3_OPTIONS="_netdev,iam_role=auto,allow_other,use_cache=/data/s3fs-cache,uid=$SSM_UID,gid=$SSM_GID,umask=0022,nonempty,compat_dir,endpoint=$AWS_REGION"
 
 for dir in ${s3fs_directories}; do
-    dir="$${dir%/}"
+    # Strip trailing slash cleanly
+    dir=$(echo "$dir" | sed 's/\/$//')
     mkdir -p "/$dir"
     add_fstab_line "s3fs#$BUCKET_NAME:/$dir/ /$dir fuse $S3_OPTIONS 0 0"
 done
@@ -128,12 +129,11 @@ if [ -n "$AMI_ID" ] && mountpoint -q /bootstrap; then
 fi
 
 echo "====== 8. Finalize Shell Environment ======"
-[ ! -f /bin/bash.real ] && mv /bin/bash /bin/bash.real
-
-cat << 'EOF' > /bin/bash
-#!/bin/bash.real
-if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
-  cd ~
+# Clean drop-in profile setup for interactive shells (avoids breaking system bash binaries!)
+cat << 'EOF' > /etc/profile.d/carpathia.sh
+if [ "$(whoami)" == "ssm-user" ]; then
+  # Automatically drop into home directory on login
+  [ "$PWD" == "/" ] && cd ~
 
   export PATH="$PATH:/usr/local/bin:."
   export PIPX_HOME="/opt/pipx"
@@ -144,9 +144,8 @@ if [ "$(whoami)" == "ssm-user" ] && [ "$SHLVL" == "1" ]; then
 
   export PS1='[\u@\h \W]\$ '
 fi
-exec /bin/bash.real "$@"
 EOF
-chmod +x /bin/bash
+chmod +x /etc/profile.d/carpathia.sh
 
 rm -f /etc/carpathia_status
 echo "====== CARPATHIA INITIALIZATION COMPLETE ======"

@@ -199,10 +199,11 @@ data "aws_iam_policy_document" "s3fs_bucket_policy" {
 resource "aws_s3_object" "s3fs_directories" {
   for_each = toset(var.s3fs_directories)
 
-  bucket  = aws_s3_bucket.s3fs_bucket.id
-  key     = each.value
-  acl     = "private"
-  content = ""
+  bucket       = aws_s3_bucket.s3fs_bucket.id
+  key          = each.value
+  content_type = "application/x-directory" # Added for S3FS native folder detection
+  content      = ""
+  
   lifecycle {
     ignore_changes = [
       metadata
