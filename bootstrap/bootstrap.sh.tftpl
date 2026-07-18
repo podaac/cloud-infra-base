@@ -66,12 +66,12 @@ dnf install -y \
 echo "====== 3. Oracle Cleanup ======"
 rm -f /etc/yum.repos.d/oracle-instantclient.repo
 
-echo "====== 4. Build S3FS (v1.95) ======"
+echo "====== 4. Build S3FS (v1.94) ======"
 cd /opt
 [ -d s3fs-fuse ] && rm -rf s3fs-fuse
 git clone https://github.com/s3fs-fuse/s3fs-fuse.git
 cd s3fs-fuse
-git checkout v1.95
+git checkout v1.94
 ./autogen.sh && ./configure --prefix=/usr && make -j$(nproc) && make install
 cd /
 ln -sf /usr/bin/s3fs /sbin/mount.s3fs
